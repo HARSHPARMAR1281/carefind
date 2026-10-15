@@ -1,0 +1,4 @@
+#Tue Aug 11 14:30:35 IST 2026
+base.0=C\:\\Users\\parma\\OneDrive\\Desktop\\carefind\\build\\app\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
+path.0=classes.dex
+renamed.0=classes.dex

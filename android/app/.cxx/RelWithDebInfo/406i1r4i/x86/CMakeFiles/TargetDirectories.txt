@@ -1,0 +1,2 @@
+C:/Users/parma/OneDrive/Desktop/carefind/android/app/.cxx/RelWithDebInfo/406i1r4i/x86/CMakeFiles/edit_cache.dir
+C:/Users/parma/OneDrive/Desktop/carefind/android/app/.cxx/RelWithDebInfo/406i1r4i/x86/CMakeFiles/rebuild_cache.dir
