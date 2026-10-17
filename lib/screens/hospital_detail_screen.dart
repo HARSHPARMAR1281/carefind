@@ -63,7 +63,8 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
 
   Future<void> _openMaps(Hospital h) async {
     final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=${h.latitude},${h.longitude}',
+      'https://www.openstreetmap.org/?mlat=${h.latitude}&mlon=${h.longitude}'
+      '#map=17/${h.latitude}/${h.longitude}',
     );
     if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }

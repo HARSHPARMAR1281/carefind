@@ -41,7 +41,8 @@ class EmergencyService {
       return '$emergencyMessagePrefix Location unavailable.';
     }
     final mapsLink =
-        'https://maps.google.com/?q=${location.latitude},${location.longitude}';
+        'https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}'
+        '#map=17/${location.latitude}/${location.longitude}';
     return '$emergencyMessagePrefix My location: $mapsLink '
         '(${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)})';
   }
