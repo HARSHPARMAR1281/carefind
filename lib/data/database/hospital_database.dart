@@ -20,60 +20,84 @@ class HospitalDatabase {
     return openDatabase(
       join(dbPath, 'carefind_hospitals.db'),
       version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE hospitals (
-            id TEXT PRIMARY KEY,
-            google_place_id TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            address TEXT,
-            phone TEXT,
-            rating REAL DEFAULT 0,
-            total_reviews INTEGER DEFAULT 0,
-            category TEXT DEFAULT 'hospital',
-            emergency_available INTEGER DEFAULT 0,
-            verified INTEGER DEFAULT 0,
-            has_icu INTEGER DEFAULT 0,
-            has_ambulance INTEGER DEFAULT 0,
-            has_blood_bank INTEGER DEFAULT 0,
-            opening_hours TEXT,
-            cached_at INTEGER
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE specialities (
-            speciality_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            speciality_name TEXT UNIQUE NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE hospital_specialities (
-            hospital_id TEXT NOT NULL,
-            speciality_id INTEGER NOT NULL,
-            PRIMARY KEY (hospital_id, speciality_id),
-            FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
-            FOREIGN KEY (speciality_id) REFERENCES specialities(speciality_id)
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE services (
-            service_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service_name TEXT UNIQUE NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE hospital_services (
-            hospital_id TEXT NOT NULL,
-            service_id INTEGER NOT NULL,
-            PRIMARY KEY (hospital_id, service_id),
-            FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
-            FOREIGN KEY (service_id) REFERENCES services(service_id)
-          )
-        ''');
-      },
+      onCreate: (db, version) => _createSchema(db),
+      onOpen: _ensureCurrentSchema,
     );
+  }
+
+  Future<void> _createSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE hospitals (
+        id TEXT PRIMARY KEY,
+        google_place_id TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        address TEXT,
+        phone TEXT,
+        rating REAL DEFAULT 0,
+        total_reviews INTEGER DEFAULT 0,
+        category TEXT DEFAULT 'hospital',
+        emergency_available INTEGER DEFAULT 0,
+        verified INTEGER DEFAULT 0,
+        has_icu INTEGER DEFAULT 0,
+        has_ambulance INTEGER DEFAULT 0,
+        has_blood_bank INTEGER DEFAULT 0,
+        opening_hours TEXT,
+        cached_at INTEGER
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE specialities (
+        speciality_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speciality_name TEXT UNIQUE NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE hospital_specialities (
+        hospital_id TEXT NOT NULL,
+        speciality_id INTEGER NOT NULL,
+        PRIMARY KEY (hospital_id, speciality_id),
+        FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
+        FOREIGN KEY (speciality_id) REFERENCES specialities(speciality_id)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE services (
+        service_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_name TEXT UNIQUE NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE hospital_services (
+        hospital_id TEXT NOT NULL,
+        service_id INTEGER NOT NULL,
+        PRIMARY KEY (hospital_id, service_id),
+        FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
+        FOREIGN KEY (service_id) REFERENCES services(service_id)
+      )
+    ''');
+  }
+
+  /// Phones that ran an earlier build can still have a `hospitals` table
+  /// without the `google_place_id` column, and the version number alone
+  /// would never rebuild it. These tables only cache OSM data, so when the
+  /// columns do not match they are dropped and created again.
+  Future<void> _ensureCurrentSchema(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(hospitals)');
+    final hasPlaceId = columns.any((c) => c['name'] == 'google_place_id');
+    if (hasPlaceId) return;
+
+    for (final table in const [
+      'hospital_services',
+      'hospital_specialities',
+      'services',
+      'specialities',
+      'hospitals',
+    ]) {
+      await db.execute('DROP TABLE IF EXISTS $table');
+    }
+    await _createSchema(db);
   }
 
   Future<void> upsertHospital(Hospital hospital) async {
