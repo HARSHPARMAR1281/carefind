@@ -274,9 +274,17 @@ class HospitalProvider extends ChangeNotifier {
   Future<void> showDirectionsOnMap(Hospital hospital) async {
     _loadingRoute = true;
     _error = null;
+    // Switch to the map straight away, focused on the destination, while the
+    // route is fetched from OSRM.
+    _mapState = MapDisplayState(
+      mode: MapViewMode.directions,
+      focusHospital: hospital,
+    );
+    _openMapTabRequest = true;
     notifyListeners();
 
-    _position ??= await LocationUtils.getEffectivePosition();
+    _position ??=
+        await LocationUtils.getLastKnown() ?? await LocationUtils.getEffectivePosition();
     if (_position == null) {
       _loadingRoute = false;
       _error = 'Turn on location to get directions.';
@@ -296,7 +304,7 @@ class HospitalProvider extends ChangeNotifier {
     _loadingRoute = false;
 
     if (route == null) {
-      _error = 'Could not load route. Check your internet connection.';
+      _error = 'Could not load the route. Check your internet connection.';
       notifyListeners();
       return;
     }
@@ -308,7 +316,6 @@ class HospitalProvider extends ChangeNotifier {
       routeDistanceKm: route.distanceKm,
       routeDurationMinutes: route.durationMinutes,
     );
-    _openMapTabRequest = true;
     notifyListeners();
   }
 

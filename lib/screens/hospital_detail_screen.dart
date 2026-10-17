@@ -212,10 +212,19 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _openMaps(h),
-                  icon: const Icon(Icons.map),
+                  onPressed: () {
+                    provider.showDirectionsOnMap(h);
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  icon: const Icon(Icons.directions),
                   label: const Text('Directions'),
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                onPressed: () => _openMaps(h),
+                tooltip: 'Open in browser map',
+                icon: const Icon(Icons.open_in_new),
               ),
             ],
           ),

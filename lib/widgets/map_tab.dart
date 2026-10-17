@@ -182,6 +182,21 @@ class _MapTabState extends State<MapTab> {
               onClose: provider.showNearbyOnMap,
             ),
           ),
+        if (state.mode == MapViewMode.directions &&
+            state.routePoints.isEmpty &&
+            !provider.loadingRoute &&
+            provider.error != null)
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: _RouteErrorBanner(
+              message: provider.error!,
+              onRetry:
+                  focus == null ? null : () => provider.showDirectionsOnMap(focus),
+              onClose: provider.showNearbyOnMap,
+            ),
+          ),
         Positioned(
           right: 12,
           bottom: _selected == null ? 28 : 128,
@@ -265,6 +280,43 @@ class _RouteBanner extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.close),
               tooltip: 'Clear route',
+              onPressed: onClose,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteErrorBanner extends StatelessWidget {
+  const _RouteErrorBanner({
+    required this.message,
+    required this.onRetry,
+    required this.onClose,
+  });
+
+  final String message;
+  final VoidCallback? onRetry;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+            if (onRetry != null)
+              TextButton(onPressed: onRetry, child: const Text('Retry')),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Dismiss',
               onPressed: onClose,
             ),
           ],
