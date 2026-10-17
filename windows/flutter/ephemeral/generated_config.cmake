@@ -16,6 +16,7 @@ list(APPEND FLUTTER_TOOL_ENVIRONMENT
   "FLUTTER_EPHEMERAL_DIR=C:\\Users\\parma\\OneDrive\\Desktop\\carefind\\windows\\flutter\\ephemeral"
   "PROJECT_DIR=C:\\Users\\parma\\OneDrive\\Desktop\\carefind"
   "FLUTTER_TARGET=C:\\Users\\parma\\OneDrive\\Desktop\\carefind\\lib\\main.dart"
+  "DART_DEFINES=Zmx1dHRlci5pbnNwZWN0b3Iuc3RydWN0dXJlZEVycm9ycz10cnVl"
   "DART_OBFUSCATION=false"
   "TRACK_WIDGET_CREATION=true"
   "TREE_SHAKE_ICONS=false"
