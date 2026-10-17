@@ -22,6 +22,10 @@ class OsmPlacesService {
     'office',
   };
 
+  /// Public OSM servers can be slow; fail fast so the app can fall back to
+  /// saved data instead of waiting indefinitely.
+  static const _requestTimeout = Duration(seconds: 20);
+
   Map<String, String> get _headers => {
         'User-Agent': AppConfig.osmUserAgent,
         'Accept': 'application/json',
@@ -48,11 +52,13 @@ out center tags;
 ''';
 
     final url = Uri.parse(AppConfig.overpassApiUrl);
-    final response = await http.post(
-      url,
-      headers: _headers,
-      body: {'data': query},
-    );
+    final response = await http
+        .post(
+          url,
+          headers: _headers,
+          body: {'data': query},
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
       throw Exception('Overpass API request failed (${response.statusCode})');
@@ -89,11 +95,13 @@ out center tags;
     );
 
     final url = Uri.parse(AppConfig.overpassApiUrl);
-    final response = await http.post(
-      url,
-      headers: _headers,
-      body: {'data': query},
-    );
+    final response = await http
+        .post(
+          url,
+          headers: _headers,
+          body: {'data': query},
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
       throw Exception('Overpass API request failed (${response.statusCode})');
@@ -241,7 +249,7 @@ out center tags;
 
     final url = Uri.parse('${AppConfig.nominatimApiUrl}/search')
         .replace(queryParameters: params);
-    final response = await http.get(url, headers: _headers);
+    final response = await http.get(url, headers: _headers).timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
       throw Exception('Nominatim search failed (${response.statusCode})');
@@ -279,7 +287,7 @@ out center tags;
 
     final url = Uri.parse('${AppConfig.nominatimApiUrl}/search')
         .replace(queryParameters: params);
-    final response = await http.get(url, headers: _headers);
+    final response = await http.get(url, headers: _headers).timeout(_requestTimeout);
 
     if (response.statusCode != 200) {
       throw Exception('Nominatim search failed (${response.statusCode})');
@@ -350,11 +358,13 @@ out center tags;
 ''';
 
     final url = Uri.parse(AppConfig.overpassApiUrl);
-    final response = await http.post(
-      url,
-      headers: _headers,
-      body: {'data': query},
-    );
+    final response = await http
+        .post(
+          url,
+          headers: _headers,
+          body: {'data': query},
+        )
+        .timeout(_requestTimeout);
 
     if (response.statusCode != 200) return null;
 

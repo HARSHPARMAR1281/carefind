@@ -24,7 +24,10 @@ class LocationUtils {
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          // Hospital search does not need metre-level accuracy; medium is
+          // much faster to obtain, and the time limit avoids long waits.
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
         ),
       );
       await LocationStorage.save(position);

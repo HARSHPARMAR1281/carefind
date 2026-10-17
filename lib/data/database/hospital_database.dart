@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -210,6 +212,43 @@ class HospitalDatabase {
     final byId = await getById(osmId);
     if (byId != null) return byId;
     return getByPlaceId(osmId);
+  }
+
+  /// Saved facilities inside a bounding box around the point (cheap SQL
+  /// filter, tags are loaded only for the few rows returned). Demo seed rows
+  /// are excluded.
+  Future<List<Hospital>> getNear({
+    required double latitude,
+    required double longitude,
+    required double radiusKm,
+    int limit = 80,
+  }) async {
+    final db = await database;
+    final latDelta = radiusKm / 111.0;
+    final lngDelta = radiusKm /
+        (111.0 * math.max(0.1, math.cos(latitude * math.pi / 180)));
+    final rows = await db.query(
+      'hospitals',
+      where: 'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ? '
+          "AND google_place_id NOT LIKE 'demo%'",
+      whereArgs: [
+        latitude - latDelta,
+        latitude + latDelta,
+        longitude - lngDelta,
+        longitude + lngDelta,
+      ],
+      limit: limit,
+    );
+    final hospitals = <Hospital>[];
+    for (final row in rows) {
+      final id = row['id'] as String;
+      final specialities = await _getTagsForHospital(
+        id, 'hospital_specialities', 'specialities', 'speciality_id', 'speciality_name');
+      final services = await _getTagsForHospital(
+        id, 'hospital_services', 'services', 'service_id', 'service_name');
+      hospitals.add(Hospital.fromMap(row, specialities: specialities, services: services));
+    }
+    return hospitals;
   }
 
   Future<List<Hospital>> getAll() async {

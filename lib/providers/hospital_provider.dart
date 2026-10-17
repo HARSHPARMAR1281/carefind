@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../config/app_config.dart';
+import '../core/utils/location_storage.dart';
 import '../core/utils/location_utils.dart';
 import '../data/models/hospital.dart';
 import '../data/models/map_mode.dart';
@@ -37,6 +40,8 @@ class HospitalProvider extends ChangeNotifier {
   NearbyFilters _nearbyFilters = const NearbyFilters();
   MapDisplayState _mapState = const MapDisplayState();
   bool _openMapTabRequest = false;
+  DateTime? _lastRefreshAt;
+  static const _staleAfter = Duration(minutes: 5);
 
   List<Hospital> get nearby => _nearby;
   List<Hospital> get nearbyPool => _nearbyPool;
@@ -80,21 +85,61 @@ class HospitalProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _hospitalRepo.initialize();
+    // Do not wait for GPS and the network here: the Nearby tab shows saved
+    // results straight away and fills in live results when they arrive.
+    unawaited(refreshNearby());
+  }
+
+  /// Used when the app returns from the background: skip the GPS fix and
+  /// network search if the list was refreshed recently.
+  Future<void> refreshNearbyIfStale() async {
+    final last = _lastRefreshAt;
+    if (last != null &&
+        _nearbyPool.isNotEmpty &&
+        DateTime.now().difference(last) < _staleAfter) {
+      return;
+    }
     await refreshNearby();
   }
 
   Future<void> refreshNearby() async {
+    if (_loadingNearby) return;
     _loadingNearby = true;
     _error = null;
+    _lastRefreshAt = DateTime.now();
     notifyListeners();
 
+    // 1. Show what is already saved on the phone, instantly.
+    if (_nearbyPool.isEmpty) {
+      try {
+        final saved = await LocationStorage.load();
+        if (saved != null) {
+          final cached = await _hospitalRepo.loadCachedNearby(
+            latitude: saved.latitude,
+            longitude: saved.longitude,
+          );
+          if (cached.isNotEmpty && _nearbyPool.isEmpty) {
+            _position ??= saved;
+            _nearbyPool = cached;
+            _applyNearbyFilters();
+            notifyListeners();
+          }
+        }
+      } catch (_) {
+        // Saved data is only a shortcut; carry on with the live search.
+      }
+    }
+
+    // 2. Fresh GPS fix (one attempt, with a time limit).
     final live = await LocationUtils.getCurrentPosition();
     if (live != null) {
       _position = live;
       _locationLive = true;
       _usingLastKnownLocation = false;
     } else {
-      _position = await LocationUtils.getEffectivePosition();
+      // getCurrentPosition already tried (and failed), so use the saved
+      // position instead of waiting for a second GPS attempt.
+      _position = await LocationStorage.load();
       _locationLive = false;
       _usingLastKnownLocation = _position != null;
     }

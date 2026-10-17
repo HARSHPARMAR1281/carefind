@@ -69,8 +69,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-
     final online = await NetworkUtils.hasConnection();
     if (!online && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

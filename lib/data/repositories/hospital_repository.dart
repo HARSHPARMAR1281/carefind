@@ -61,6 +61,26 @@ class HospitalRepository {
     );
   }
 
+  /// Facilities already saved on the phone near a point, used to fill the
+  /// Nearby tab instantly while the live search runs.
+  Future<List<Hospital>> loadCachedNearby({
+    required double latitude,
+    required double longitude,
+    double maxKm = 25,
+  }) async {
+    final saved = await _hospitalDb.getNear(
+      latitude: latitude,
+      longitude: longitude,
+      radiusKm: maxKm,
+    );
+    final near = _withDistances(saved, latitude, longitude)
+        .where((h) => (h.distanceKm ?? 999) <= maxKm)
+        .toList();
+    return _dedupeByOsmId(sortByProminence(near))
+        .take(AppConfig.targetNearbyHospitals)
+        .toList();
+  }
+
   /// Prioritises large / well-known hospitals; distance still matters but
   /// famous facilities can rank above smaller nearby clinics.
   static int prominenceScore(Hospital h) {

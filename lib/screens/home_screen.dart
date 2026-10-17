@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      context.read<HospitalProvider>().refreshNearby();
+      context.read<HospitalProvider>().refreshNearbyIfStale();
     }
   }
 

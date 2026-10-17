@@ -143,6 +143,8 @@ class _NearbyListPanelState extends State<_NearbyListPanel> {
                   textAlign: TextAlign.center,
                 ),
               ),
+            if (provider.loadingNearby && provider.nearby.isNotEmpty)
+              const LinearProgressIndicator(minHeight: 2),
             if (!provider.loadingNearby && provider.nearbyPool.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -154,7 +156,7 @@ class _NearbyListPanelState extends State<_NearbyListPanel> {
                 ),
               ),
             Expanded(
-              child: provider.loadingNearby
+              child: provider.loadingNearby && provider.nearby.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : provider.error != null && provider.nearby.isEmpty
                       ? Center(
