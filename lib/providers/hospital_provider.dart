@@ -112,7 +112,8 @@ class HospitalProvider extends ChangeNotifier {
     // 1. Show what is already saved on the phone, instantly.
     if (_nearbyPool.isEmpty) {
       try {
-        final saved = await LocationStorage.load();
+        final saved =
+            await LocationUtils.getLastKnown() ?? await LocationStorage.load();
         if (saved != null) {
           final cached = await _hospitalRepo.loadCachedNearby(
             latitude: saved.latitude,
@@ -137,9 +138,11 @@ class HospitalProvider extends ChangeNotifier {
       _locationLive = true;
       _usingLastKnownLocation = false;
     } else {
-      // getCurrentPosition already tried (and failed), so use the saved
-      // position instead of waiting for a second GPS attempt.
-      _position = await LocationStorage.load();
+      // getCurrentPosition already tried (and failed), so use the phone's
+      // last-known fix, then the app's saved one, instead of waiting for a
+      // second GPS attempt.
+      _position =
+          await LocationUtils.getLastKnown() ?? await LocationStorage.load();
       _locationLive = false;
       _usingLastKnownLocation = _position != null;
     }

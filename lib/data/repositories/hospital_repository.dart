@@ -43,7 +43,17 @@ class HospitalRepository {
         hospitals = result.hospitals;
         usedRadiusKm = result.usedRadiusKm;
       } catch (_) {
-        hospitals = await _hospitalDb.getAll();
+        // Network search failed: fall back to saved facilities that are
+        // actually near the user, never the whole table (which can hold
+        // hospitals from other cities). If nothing is saved nearby, let the
+        // error reach the UI so it can offer a retry.
+        final saved = await loadCachedNearby(
+          latitude: latitude,
+          longitude: longitude,
+          maxKm: 50,
+        );
+        if (saved.isEmpty) rethrow;
+        hospitals = saved;
       }
     }
 

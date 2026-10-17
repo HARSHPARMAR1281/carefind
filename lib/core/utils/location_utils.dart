@@ -27,11 +27,21 @@ class LocationUtils {
           // Hospital search does not need metre-level accuracy; medium is
           // much faster to obtain, and the time limit avoids long waits.
           accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 8),
+          timeLimit: Duration(seconds: 15),
         ),
       );
       await LocationStorage.save(position);
       return position;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The phone's own most recent location fix (usually still the right area
+  /// when a fresh GPS fix is slow, e.g. indoors).
+  static Future<Position?> getLastKnown() async {
+    try {
+      return await Geolocator.getLastKnownPosition();
     } catch (_) {
       return null;
     }
