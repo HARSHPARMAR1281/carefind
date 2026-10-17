@@ -113,6 +113,7 @@ flutter run \
 # Custom OSM / routing endpoints
 flutter run \
   --dart-define=OSM_USER_AGENT=CareFind/1.0 \
+  --dart-define=OSM_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png \
   --dart-define=OVERPASS_API_URL=https://overpass-api.de/api/interpreter \
   --dart-define=NOMINATIM_API_URL=https://nominatim.openstreetmap.org \
   --dart-define=OSRM_API_URL=https://router.project-osrm.org

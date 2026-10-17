@@ -1,19 +1,15 @@
 /// App configuration. Pass overrides via --dart-define at build/run time.
 class AppConfig {
   static const String appName = 'CareFind';
-  static const String googleMapsApiKey = String.fromEnvironment(
-    'GOOGLE_MAPS_API_KEY',
-    defaultValue: '',
-  );
-  static const String googlePlacesApiKey = String.fromEnvironment(
-    'GOOGLE_PLACES_API_KEY',
-    defaultValue: '',
-  );
-
   static const String osmUserAgent = String.fromEnvironment(
     'OSM_USER_AGENT',
     defaultValue: 'CareFind/1.0 (https://github.com/carefind)',
   );
+  static const String osmTileUrl = String.fromEnvironment(
+    'OSM_TILE_URL',
+    defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  );
+  static const String tilePackageName = 'com.example.carefind';
   static const String overpassApiUrl = String.fromEnvironment(
     'OVERPASS_API_URL',
     defaultValue: 'https://overpass-api.de/api/interpreter',
