@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/permission_utils.dart';
 import '../data/models/hospital.dart';
 import '../data/models/nearby_filters.dart';
 import '../providers/auth_provider.dart';
@@ -121,38 +122,36 @@ class _NearbyListPanelState extends State<_NearbyListPanel> {
               ),
             ),
             _FilterBar(provider: provider),
-            if (!provider.locationLive && provider.usingLastKnownLocation)
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  'Using last known location — turn on GPS for live results',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.orange.shade800,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else if (!provider.locationLive && provider.position == null)
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  'Location off — enable location to see nearby hospitals',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.red.shade700,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            _LocationStatus(provider: provider),
             if (provider.loadingNearby && provider.nearby.isNotEmpty)
               const LinearProgressIndicator(minHeight: 2),
-            if (!provider.loadingNearby && provider.nearbyPool.isNotEmpty)
+            if (provider.nearbyPool.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Text(
-                  '${provider.nearby.length} hospitals & facilities'
-                      '${provider.nearbyFilters.hasActiveFilters ? ' (filtered)' : ''}'
-                      ' — major hospitals ranked first',
-                  style: Theme.of(context).textTheme.bodySmall,
+                padding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${provider.nearby.length} facilities'
+                        '${provider.nearbyFilters.hasActiveFilters ? ' (filtered)' : ''}'
+                        ' within ${provider.nearbyRadiusKm.round()} km',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    SegmentedButton<bool>(
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      segments: const [
+                        ButtonSegment(value: true, label: Text('Nearest')),
+                        ButtonSegment(value: false, label: Text('Top ranked')),
+                      ],
+                      selected: {provider.sortNearestFirst},
+                      onSelectionChanged: (s) =>
+                          provider.setSortNearestFirst(s.first),
+                    ),
+                  ],
                 ),
               ),
             Expanded(
@@ -212,6 +211,87 @@ class _NearbyListPanelState extends State<_NearbyListPanel> {
           ],
         );
       },
+    );
+  }
+}
+
+/// One line that always says which location the list is based on, with a
+/// button to fix it when location is not available.
+class _LocationStatus extends StatelessWidget {
+  const _LocationStatus({required this.provider});
+
+  final HospitalProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final pos = provider.position;
+    final coords = pos == null
+        ? ''
+        : '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+    final access = provider.locationAccess;
+
+    IconData icon = Icons.location_off;
+    Color color = Colors.orange.shade800;
+    String text;
+    String? actionLabel;
+    VoidCallback? onAction;
+
+    if (provider.locationLive) {
+      icon = Icons.my_location;
+      color = Colors.green.shade800;
+      text = 'Using your live location ($coords)';
+    } else if (access == LocationAccess.denied) {
+      color = Colors.red.shade700;
+      text = 'Location permission is needed to find hospitals near you.';
+      actionLabel = 'Allow';
+      onAction = provider.requestLocationAndRefresh;
+    } else if (access == LocationAccess.deniedForever) {
+      color = Colors.red.shade700;
+      text = 'Location permission is blocked for CareFind.';
+      actionLabel = 'Open settings';
+      onAction = provider.requestLocationAndRefresh;
+    } else if (access == LocationAccess.serviceOff) {
+      color = Colors.red.shade700;
+      text = 'Location (GPS) is turned off on this phone.';
+      actionLabel = 'Turn on';
+      onAction = provider.requestLocationAndRefresh;
+    } else if (provider.usingLastKnownLocation) {
+      text = 'No fresh GPS fix - showing results near your last known '
+          'location ($coords).';
+      actionLabel = 'Retry';
+      onAction = provider.refreshNearby;
+    } else if (provider.loadingNearby) {
+      return const SizedBox.shrink();
+    } else {
+      text = 'Waiting for your location...';
+      actionLabel = 'Retry';
+      onAction = provider.refreshNearby;
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: color),
+            ),
+          ),
+          if (actionLabel != null)
+            TextButton(onPressed: onAction, child: Text(actionLabel)),
+        ],
+      ),
     );
   }
 }

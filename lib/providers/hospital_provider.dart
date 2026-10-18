@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import '../config/app_config.dart';
 import '../core/utils/location_storage.dart';
 import '../core/utils/location_utils.dart';
+import '../core/utils/permission_utils.dart';
 import '../data/models/hospital.dart';
 import '../data/models/map_mode.dart';
 import '../data/models/nearby_filters.dart';
@@ -40,6 +41,8 @@ class HospitalProvider extends ChangeNotifier {
   NearbyFilters _nearbyFilters = const NearbyFilters();
   MapDisplayState _mapState = const MapDisplayState();
   bool _openMapTabRequest = false;
+  LocationAccess _locationAccess = LocationAccess.granted;
+  bool _sortNearestFirst = true;
   DateTime? _lastRefreshAt;
   static const _staleAfter = Duration(minutes: 5);
 
@@ -64,6 +67,8 @@ class HospitalProvider extends ChangeNotifier {
   MapDisplayState get mapState => _mapState;
   bool get isDemoMode => AppConfig.demoMode;
   bool get openMapTabRequest => _openMapTabRequest;
+  LocationAccess get locationAccess => _locationAccess;
+  bool get sortNearestFirst => _sortNearestFirst;
 
   /// Nearby list ranked by prominence (famous / large hospitals first).
   List<Hospital> get prominentNearby =>
@@ -94,12 +99,36 @@ class HospitalProvider extends ChangeNotifier {
   /// network search if the list was refreshed recently.
   Future<void> refreshNearbyIfStale() async {
     final last = _lastRefreshAt;
+    // Without a live fix (e.g. the user just came back from the settings
+    // screen after allowing location) always search again.
     if (last != null &&
         _nearbyPool.isNotEmpty &&
+        _locationLive &&
         DateTime.now().difference(last) < _staleAfter) {
       return;
     }
     await refreshNearby();
+  }
+
+  /// "Allow location" / "Turn on" button: shows the permission dialog, or opens
+  /// the right settings screen when Android will not show it any more.
+  Future<void> requestLocationAndRefresh() async {
+    final access = await PermissionUtils.requestLocationAccess();
+    if (access == LocationAccess.deniedForever) {
+      await LocationUtils.openAppSettings();
+      return;
+    }
+    if (access == LocationAccess.serviceOff) {
+      await LocationUtils.openLocationSettings();
+      return;
+    }
+    await refreshNearby();
+  }
+
+  void setSortNearestFirst(bool value) {
+    _sortNearestFirst = value;
+    _applyNearbyFilters();
+    notifyListeners();
   }
 
   Future<void> refreshNearby() async {
@@ -132,12 +161,22 @@ class HospitalProvider extends ChangeNotifier {
     }
 
     // 2. Fresh GPS fix (one attempt, with a time limit).
-    final live = await LocationUtils.getCurrentPosition();
+    Position? live;
+    try {
+      live = await LocationUtils.getCurrentPosition();
+    } catch (_) {
+      // e.g. another permission request is already on screen
+      live = null;
+    }
     if (live != null) {
       _position = live;
       _locationLive = true;
       _usingLastKnownLocation = false;
+      _locationAccess = LocationAccess.granted;
     } else {
+      try {
+        _locationAccess = await PermissionUtils.locationAccess();
+      } catch (_) {}
       // getCurrentPosition already tried (and failed), so use the phone's
       // last-known fix, then the app's saved one, instead of waiting for a
       // second GPS attempt.
@@ -174,7 +213,13 @@ class HospitalProvider extends ChangeNotifier {
   }
 
   void _applyNearbyFilters() {
-    _nearby = _hospitalRepo.applyFilters(_nearbyPool, _nearbyFilters);
+    final filtered = _hospitalRepo.applyFilters(_nearbyPool, _nearbyFilters);
+    if (_sortNearestFirst) {
+      // Closest first. The pool itself stays in "top ranked" order.
+      filtered.sort((a, b) => (a.distanceKm ?? double.infinity)
+          .compareTo(b.distanceKm ?? double.infinity));
+    }
+    _nearby = filtered;
   }
 
   void updateSearchPrefix(String prefix) {

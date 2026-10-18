@@ -26,46 +26,56 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _ensureLocationEnabled() async {
-    await PermissionUtils.requestLocationPermission();
+    // Shows the system "Allow location?" dialog the first time.
+    final access = await PermissionUtils.requestLocationAccess();
+    if (access == LocationAccess.granted || !mounted) return;
 
-    var granted = await PermissionUtils.isLocationGranted();
-    var serviceOn = await LocationUtils.isLocationServiceEnabled();
+    final String message;
+    final String action;
+    if (access == LocationAccess.serviceOff) {
+      message = 'Location (GPS) is turned off. Turn it on to see hospitals '
+          'near you.';
+      action = 'Turn on location';
+    } else if (access == LocationAccess.deniedForever) {
+      message = 'Location permission is blocked for CareFind. Allow it in '
+          'app settings to see hospitals near you.';
+      action = 'Open settings';
+    } else {
+      message = 'CareFind needs your location to show nearby hospitals.';
+      action = 'Allow location';
+    }
 
-    if (granted && serviceOn) return;
-
-    if (!mounted) return;
-
-    await showDialog<void>(
+    final proceed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.location_off, size: 40),
         title: const Text('Location required'),
-        content: const Text(
-          'CareFind needs your location to show nearby hospitals. '
-          'Please turn on location services and allow location access.',
-        ),
+        content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Continue anyway'),
           ),
           FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (!await LocationUtils.isLocationServiceEnabled()) {
-                await LocationUtils.openLocationSettings();
-              } else {
-                await LocationUtils.openAppSettings();
-              }
-            },
-            child: const Text('Open settings'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(action),
           ),
         ],
       ),
     );
 
-    await PermissionUtils.requestLocationPermission();
+    if (proceed != true) return;
+
+    // Done after the dialog has closed, and awaited, so the app does not start
+    // its own location request while the system permission dialog is open.
+    if (access == LocationAccess.serviceOff) {
+      await LocationUtils.openLocationSettings();
+    } else if (access == LocationAccess.deniedForever) {
+      await LocationUtils.openAppSettings();
+    } else {
+      await PermissionUtils.requestLocationAccess();
+    }
   }
 
   Future<void> _bootstrap() async {
